@@ -1,8 +1,21 @@
 {
-    "name": "landscapeinstitute/my-landscapeinstitute-api-php",
-    "type": "library",
-    "description": "",
-    "license": "All rights reserved.",
-    "version": "2.0.1",
-    "keywords": ["a", "b", "c"] 
+  "name": "landscapeinstitute/my-landscapeinstitute-api-php",
+  "type": "library",
+  "description": "myli-php. Libarary for using the MyLI API and oAuth2.0 Functionality",
+  "homepage": "https://github.com/landscapeInstitute/my-landscapeinstitute-api-php",
+  "authors": [
+    {
+      "name": "Louis Varley",
+      "email": "louis.varley@landscapeinstitute.org",
+      "homepage": "https://www.landscapeinstitute.org"
+    }
+  ],
+  "require": {
+    "php": ">=5.6",
+  },
+  "autoload": {
+    "files": [
+      "src/my-landscapeinstitute-api.php"
+    ]
+  }
 }
