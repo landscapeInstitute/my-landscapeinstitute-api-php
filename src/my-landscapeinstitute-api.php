@@ -148,7 +148,7 @@ class myLI{
 	function get_user_profile(){
 		
 		if(!myLISession::exists('user_profile')){
-			$this->user_profile = $this->api->me->UserProfile;
+			$this->user_profile = $this->api->me->userprofile;
             myLISession::save('user_profile',$this->user_profile );
 		}
 		$this->user_profile = myLISession::load('user_profile');
@@ -158,17 +158,29 @@ class myLI{
 	
 	/* Pulls access token owners current membership details */
 	function get_user_membership(){
-		
+
 		if(!myLISession::exists('user_membership')){
-			$this->user_membership = $this->api->me->getMembership->query();
+			$this->user_membership = $this->api->me->usermembership->query();
 			myLISession::save('user_membership',$this->user_membership );
 		}
-		
+	
 		$this->user_membership = myLISession::load('user_membership');
 		return $this->user_membership;
 		
-	}	 
+	}	
 
+
+	/* Call Any Other Endpoint */
+	function call($endpoint,$method,$args){
+		
+		if(isset($this->api->$endpoint)){
+			if(isset($this->api->$endpoint->$method)){			
+				if(isset($this->api->$endpoint->$method->query)){	
+					return $this->api->$endpoint->$method->query($args);
+				}
+			}
+		}
+	}
 }
 
 class myLIAPI {
