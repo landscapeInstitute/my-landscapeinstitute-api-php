@@ -173,10 +173,10 @@ class myLI{
 	/* Call Any Other Endpoint */
 	function call($endpoint,$method,$args){
 		
-		if(isset($this->api->$endpoint)){
-			if(isset($this->api->$endpoint->$method)){			
-				if(isset($this->api->$endpoint->$method->query)){	
-					return $this->api->$endpoint->$method->query($args);
+		if(isset($this->api->strtolower($endpoint))){
+			if(isset($this->api->strtolower($endpoint)->strtolower($method))){			
+				if(isset($this->api->strtolower($endpoint)->strtolower($method)->query)){	
+					return $this->api->strtolower($endpoint)->strtolower($method)->query($args);
 				}
 			}
 		}
