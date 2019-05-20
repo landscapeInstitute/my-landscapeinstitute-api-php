@@ -10,19 +10,16 @@
 class myLISession{
 	
 	public static function save($key,$v){
-		
 		if(session_status() == PHP_SESSION_NONE) session_start();
 			$_SESSION['myli_' . $key] = $v; 
 	}
 	
 	public static function load($key){
-		
 		if(self::exists($key))
 			return $_SESSION['myli_' . $key];
 	}
 	
 	public static function exists($key){
-		
 		if(!empty($_SESSION['myli_' . $key])) return true;
 	}
 	
@@ -32,26 +29,29 @@ class myLI{
 	
 	public function __construct($arr){
 
+		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));
+		
 		$this->client_id = (isset($arr['client_id']) ? $arr['client_id'] : null);
 		$this->client_secret = (isset($arr['client_secret']) ? $arr['client_secret'] : null);
 		$this->instance_url = (isset($arr['instance_url']) ? $arr['instance_url'] : null);
- 		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));
-        
-		$this->oAuth_url = $this->instance_url . '/oauth/' . $this->client_id;
-		$this->json_file = $this->instance_url . '/api/swagger.json';
-		$this->refresh_token = myLISession::load('refresh_token');
+ 		$this->json_file = $this->instance_url . '/api/swagger.json';
+		
+        if(isset($this->client_id)){
+			$this->oAuth_url = $this->instance_url . '/oauth/' . $this->client_id;
+			$this->refresh_token = myLISession::load('refresh_token');
+		}
         
         if(myLISession::exists('api')){
             $this->api = myLISession::load('api');
         }else{
-            $this->api = new myLIAPI($this->json_file);
+            $this->api = new myLIAPI($this->json_file, $this->access_token, $this->debug);
             myLISession::save('api',$api);
         }
 		
 			
 	}
 	
-	/* is the user authenticated */
+	/* is the user authenticated, checks access token is valid */
 	function is_authenticated(){
         		
 		if($this->access_token_valid()){
@@ -62,7 +62,7 @@ class myLI{
 		
 	}
 	
-	/* What the refresh token */
+	/* Set the refresh token */
 	function set_refresh_token($refresh_token){
 		
 		myLISession::save('refresh_token',$refresh_token);
@@ -79,7 +79,7 @@ class myLI{
     
 	}
 			
-	/* Is this refresh token valid */
+	/* Check the current refresh token is valid */
 	function refresh_token_valid(){
     
 		if(isset($this->refresh_token) && $this->api->oAuth->isrefreshtokenvalid->query(array('refreshToken'=>$this->refresh_token))){
@@ -90,7 +90,7 @@ class myLI{
 		
 	}	
 
-	/* Is this access Token Valid */
+	/* Check the current access token is valid */
 	function access_token_valid(){
 
 		if(isset($this->access_token) && $this->api->oAuth->isaccesstokenvalid->query(array('accessToken'=>$this->access_token))){
@@ -103,9 +103,11 @@ class myLI{
 	
 	/* Get an Access Token */
 	function get_access_token(){
-        
-       
- 
+		
+		if(empty($this->client_id) || empty($this->client_secret)){
+			return false;
+		}
+
 		if(!empty($this->access_token)){		
 			
 			if($this->access_token_valid()){
@@ -113,8 +115,6 @@ class myLI{
 			}
 		}    
 
-
-      
         if(!empty($this->refresh_token) && $this->refresh_token_valid()){
             
             $this->access_token = $this->api->oAuth->generateaccesstoken->query(array('clientID'=>$this->client_id,'clientSecret'=>$this->client_secret,'refreshToken'=>$this->refresh_token))->Token;
@@ -125,13 +125,15 @@ class myLI{
 
             $this->get_refresh_token();
         }
-    
-    
-		
+    	
 	}
 	
 	/* Get refresh token */
 	function get_refresh_token(){
+		
+		if(empty($this->client_id) || empty($this->client_secret)){
+			return false;
+		}		
                                 
 		$origin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
 
@@ -146,8 +148,6 @@ class myLI{
 	function get_user_profile(){
 		
 		if(!myLISession::exists('user_profile')){
-     var_dump($this->api->me->userprofile->query());
-     die();
 			$this->user_profile = $this->api->me->UserProfile;
             myLISession::save('user_profile',$this->user_profile );
 		}
@@ -157,7 +157,7 @@ class myLI{
 	}
 	
 	/* Pulls access token owners current membership details */
-	function get_membership(){
+	function get_user_membership(){
 		
 		if(!myLISession::exists('user_membership')){
 			$this->user_membership = $this->api->me->getMembership->query();
@@ -277,7 +277,7 @@ class myLIAPI {
         if(property_exists($pathObj,'delete'))
             $methodType = 'delete';
 
-        $this_method = new myLIAPIMethod();	
+        $this_method = new myLIAPIMethod($this);	
         
         if(isset($pathObj->$methodType->parameters)){
             
@@ -373,7 +373,7 @@ class myLIAPI {
 		$headers = array(
 			'Accept: application/json',
 			'Content-Type: ' . $content_type,			
-			'accessToken: ' . $this->accessToken,
+			'accessToken: ' . $this->access_token,
 			'Content-Length: ' . strlen($this->body),
 		);
 		
@@ -451,14 +451,39 @@ class myLIAPI {
 
 }
 
-class myLIAPIMethod extends myLIAPI{
+class myLIAPIMethod{
 	
 	public $methodName;
 	
-	public function __construct(){
-		
+	public function __construct($api){
+		$this->api = $api;
 	}
 	
+	public function __get($var) {
+
+        if (property_exists($this, $var)) {
+            return $this->$var;
+        }
+        
+        if (property_exists($this, strtolower($var))) {
+            $var = strtolower($var);
+            return $this->$var;
+        }       
+        
+        if (property_exists($this, lcfirst($var))) {
+            $var = lcfirst($var);
+            return $this->$var;
+        }      
+        
+        if (property_exists($this, ucfirst($var))) {
+            $var = ucfirst($var);
+            return $this->$var;
+        }       
+
+        return null;
+ 
+    }    	
+
 	public function query($args=null,$type="default"){
 		
 		if(!$args){$args=array();}
@@ -508,12 +533,12 @@ class myLIAPIMethod extends myLIAPI{
 		$urlQuery = rtrim($urlQuery,'&');
 		$requestBody = rtrim($requestBody,',');
 		
-		$this->call($this->url, $urlQuery, $requestBody, $this->method, $this->type);
+		$this->api->call($this->url, $urlQuery, $requestBody, $this->method, $this->type);
 		
 		try{
 		
 
-			$this->results = $this->execute();
+			$this->results = $this->api->execute();
 			
 			if(!is_array($args))	
 				return ($this->results);
