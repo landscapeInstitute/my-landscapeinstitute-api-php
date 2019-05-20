@@ -1,6 +1,11 @@
 
 # MyLI oAuth and API Class
 
+## Introduction
+
+This library allows Apps using client ID's and Secret or the use of personal access tokens to access the MyLI API. This library is for users who are intergrating services to MyLI. All MyLI users can access their own data by use of personal access tokens. 
+Apps must be setup and approved by the Landscape Institute Directly. All API's are rate limited. 
+
 ## Setup
 
 `require('myLI.php');`
@@ -71,4 +76,4 @@ You can directly call the API for more advanced usage by using the API object
     /* Returns Boolean */
     $myLI->api->me->hasPermission->query(array('permissionID'=>'A_PERMISSION'));
 
-We recomend you checkout the API explorer on the instance of MyLI you are connecting to to understand the endpoints and arguements required. 
+We recommend you checkout the API explorer on the instance of MyLI you are connecting to to understand the endpoints and arguements required. 
