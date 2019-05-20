@@ -180,6 +180,31 @@ class myLI{
 		return $this->user_profile;
 		
 	}
+ 
+	/* Pulls access token owners account basic profile */ 
+    function get_account_profile(){
+        
+        if(!myLISession::exists('account_profile')){
+			$this->account_profile = $this->api->me->accountprofile->query();
+            myLISession::save('account_profile',$this->accountprofile );
+		}
+		$this->account_profile = myLISession::load('account_profile');
+		return $this->account_profile;
+        
+    }
+ 
+	/* Pulls access token owners current account membership details */ 
+    function get_account_membership(){
+
+		if(!myLISession::exists('account_membership')){
+			$this->account_membership = $this->api->me->accountmembership->query();
+			myLISession::save('account_membership',$this->account_membership );
+		}
+	
+		$this->account_membership = myLISession::load('account_membership');
+		return $this->account_membership;
+		
+	}	
 	
 	/* Pulls access token owners current membership details */
 	function get_user_membership(){
