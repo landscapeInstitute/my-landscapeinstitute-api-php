@@ -23,6 +23,18 @@ class myLISession{
 		if(!empty($_SESSION['myli_' . $key])) return true;
 	}
 	
+	public static function kill_all(){
+			echo 'hello';
+		foreach($_SESSION as $key => $val){
+			
+			if(strpos($key,'myli_')  !== false){
+				unset($_SESSION[$key]);
+			}
+		}
+		
+		
+	}
+	
 }
 
 class myLI{
@@ -49,6 +61,11 @@ class myLI{
         }
 		
 			
+	}
+	
+	/* Kill any Session Vars Logging us off */
+	function end_sessions(){
+		myLISession::kill_all();
 	}
 	
 	/* is the user authenticated, checks access token is valid */
