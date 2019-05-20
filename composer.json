@@ -14,8 +14,7 @@
     "php": ">=5.6"
   },
   "autoload": {
-    "files": [
-      "src/my-landscapeinstitute-api.php"
-    ]
+    "files": ["my-landscapeinstitute-api.php"],
+    "exclude-from-classmap": ["/.git"]
   }
 }
