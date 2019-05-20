@@ -24,7 +24,7 @@ class myLISession{
 	}
 	
 	public static function kill_all(){
-			echo 'hello';
+
 		foreach($_SESSION as $key => $val){
 			
 			if(strpos($key,'myli_')  !== false){
@@ -98,23 +98,28 @@ class myLI{
 			
 	/* Check the current refresh token is valid */
 	function refresh_token_valid(){
+	
     
 		if(isset($this->refresh_token) && $this->api->oAuth->isrefreshtokenvalid->query(array('refreshToken'=>$this->refresh_token))){
-            return true;
+			$this->refresh_token_valid = true;
 		}else{
-			return false;
+			$this->refresh_token_valid = true;
 		}
 		
+		return $this->refresh_token_valid;
 	}	
 
 	/* Check the current access token is valid */
 	function access_token_valid(){
 
+
 		if(isset($this->access_token) && $this->api->oAuth->isaccesstokenvalid->query(array('accessToken'=>$this->access_token))){
-			return true;
+			$this->access_token_valid = true;
 		}else{
-			return false;
+			$this->access_token_valid = false;
 		}
+		
+		return $this->access_token_valid;
 		
 	}	
 	
@@ -132,7 +137,7 @@ class myLI{
 			}
 		}    
 
-        if(!empty($this->refresh_token) && $this->refresh_token_valid()){
+        if($this->refresh_token_valid()){
             
             $this->access_token = $this->api->oAuth->generateaccesstoken->query(array('clientID'=>$this->client_id,'clientSecret'=>$this->client_secret,'refreshToken'=>$this->refresh_token))->Token;
             $this->set_access_token($this->access_token);
@@ -418,7 +423,7 @@ class myLIAPI {
 		
 		
 		$results = curl_exec($curl);
-
+		
 		if($this->debug){
 
 			$post_data = json_decode($this->url_arguments);
