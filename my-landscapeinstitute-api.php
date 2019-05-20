@@ -146,9 +146,9 @@ class myLI{
 	
 	/* Pulls access token owners basic profile */
 	function get_user_profile(){
-		
+
 		if(!myLISession::exists('user_profile')){
-			$this->user_profile = $this->api->me->userprofile;
+			$this->user_profile = $this->api->me->userprofile->query();
             myLISession::save('user_profile',$this->user_profile );
 		}
 		$this->user_profile = myLISession::load('user_profile');
@@ -173,10 +173,10 @@ class myLI{
 	/* Call Any Other Endpoint */
 	function call($endpoint,$method,$args){
 		
-		if(isset($this->api->strtolower($endpoint))){
-			if(isset($this->api->strtolower($endpoint)->strtolower($method))){			
-				if(isset($this->api->strtolower($endpoint)->strtolower($method)->query)){	
-					return $this->api->strtolower($endpoint)->strtolower($method)->query($args);
+		if(isset($this->api->${strtolower($endpoint)})){
+			if(isset($this->api->${strtolower($endpoint)}->${strtolower($method)})){			
+				if(isset($this->api->${strtolower($endpoint)}->${strtolower($method)}->query)){	
+					return $this->api->${strtolower($endpoint)}->${strtolower($method)}->query($args);
 				}
 			}
 		}
