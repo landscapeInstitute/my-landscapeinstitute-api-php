@@ -6,6 +6,8 @@
 This library allows Apps using client ID's and Secret or the use of personal access tokens to access the MyLI API. This library is for users who are intergrating services to MyLI. All MyLI users can access their own data by use of personal access tokens. 
 Apps must be setup and approved by the Landscape Institute Directly. All API's are rate limited. 
 
+When a user connects using an APP, they will be asked to give expressed permission for your app to use the data it has requested. All app actions are logged. 
+
 ## Setup
 
 `require('myLI.php');`
@@ -30,7 +32,9 @@ For apps which have been issued a client ID and secret, these require the user t
     
     /* Refresh token valid but we do not have an access token */
     if($myLI->refresh_token_valid() && !myLISession::exists('access_token')){
+    
     	$myLI->get_access_token();
+        
     }
     
     /* Access token is valid */
