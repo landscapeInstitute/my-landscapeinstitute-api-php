@@ -1,7 +1,8 @@
 {
     "name": "landscapeInstitute/my-landscapeinstitute-api-php",
-    "type": "symfony-bundle",
-    "require": {
-        "php": ">=5.3.2"
-    },
+    "type": "library",
+    "description": "",
+    "license": "All rights reserved.",
+    "version": "2.0.1",
+    "keywords": ["a", "b", "c"] 
 }
