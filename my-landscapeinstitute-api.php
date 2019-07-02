@@ -142,7 +142,7 @@ class myLI{
 
         if(!empty($this->refresh_token) && $this->refresh_token_valid()){
             
-            $this->access_token = $this->api->oAuth->generateaccesstoken->query(array('clientID'=>$this->client_id,'clientSecret'=>$this->client_secret,'refreshToken'=>$this->refresh_token))->Token;
+            $this->access_token = $this->api->oAuth->generateappaccesstoken->query(array('clientID'=>$this->client_id,'clientSecret'=>$this->client_secret,'refreshToken'=>$this->refresh_token))->Token;
             $this->set_access_token($this->access_token);
             return $this->access_token;
             
