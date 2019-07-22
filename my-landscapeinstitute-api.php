@@ -7,6 +7,14 @@
 * @license    http://www.php.net/license/3_1.txt  PHP License 3.1
 */
 
+class myLIHelper{
+	
+	public static function current_url(){
+		return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";	
+	}
+	
+}
+
 class myLISession{
 	
 	public static function save($key,$v){
@@ -24,7 +32,7 @@ class myLISession{
 	}
 	
 	public static function kill_all(){
-			echo 'hello';
+
 		foreach($_SESSION as $key => $val){
 			
 			if(strpos($key,'myli_')  !== false){
@@ -41,54 +49,108 @@ class myLI{
 	
 	public function __construct($arr){
 
-		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));
+		/*
 		
+		@arr options:
+		access_token: If a token is already available, such as a personal access token
+		client_id: Provided client ID for your app, if not using a personal access token
+		client_secret: Provided client secret for your app, if not using a personal access token
+		instance_url: the full URL to the root of the MyLI Instance you are connecting to. 
+		
+		*/
+		
+		/* Pull Access Token from either ARR or session is available */
+		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));	
+		
+		/* Pull Auth Code from either ARR or session is available */		
+		$this->auth_code = (isset($arr['auth_code']) ? $arr['auth_code'] : myLISession::load('auth_code'));	
+		
+		/* Check Access Token is valid, log out if not */
+		if(!$this->access_token_valid($this->access_token)){
+			$this->logout();
+		}
+		
+		/* Instance are we accessing */
+		$this->instance_url = (isset($arr['instance_url']) ? rtrim($arr['instance_url'],"/") : null);
+		
+		/* Required for App Access Token Generation */
 		$this->client_id = (isset($arr['client_id']) ? $arr['client_id'] : null);
 		$this->client_secret = (isset($arr['client_secret']) ? $arr['client_secret'] : null);
-		$this->instance_url = (isset($arr['instance_url']) ? $arr['instance_url'] : null);
+		
+		/* Generate these from Instance URL */
  		$this->json_file = $this->instance_url . '/api/swagger.json';
-		
-        if(isset($this->client_id)){
-			$this->oAuth_url = $this->instance_url . '/oauth/' . $this->client_id;
-			$this->refresh_token = myLISession::load('refresh_token');
-		}
-        
-        if(myLISession::exists('api')){
-            $this->api = myLISession::load('api');
-        }else{
-            $this->api = new myLIAPI($this->json_file, $this->access_token, $this->debug);
-            myLISession::save('api',$api);
-        }
-		
+		$this->oauth_url = $this->instance_url . '/oauth'
+	
+		/* If access token is provided, then load the API, saves to session to keep loading times down */
+		if($this->access_token){
 			
+			if(myLISession::exists('api')){
+				$this->api = myLISession::load('api');
+			}else{
+				$this->api = new myLIAPI($this->json_file, $this->access_token, $this->debug);
+				myLISession::save('api',$api);
+			}
+			
+		}
+		
 	}
 	
-	/* Kill any Session Vars Logging us off */
-	function end_sessions(){
-		myLISession::kill_all();
-	}
-	
-	/* is the user authenticated, checks access token is valid */
-	function is_authenticated(){
-        		
-		if($this->access_token_valid()){
-			return true;
-		}else{
+	/* Send to get Auth Code, Optional Redirect which is returned to your call back set when app was registered */
+	private function get_auth_code($redirect=null){
+		
+		if(empty($redirect)){
+			$redirect = myLIHelper::current_url();
+		}
+		
+		if(empty($this->client_id)){
 			return false;
 		}
 		
-	}
-	
-	/* Set the refresh token */
-	function set_refresh_token($refresh_token){
-		
-		myLISession::save('refresh_token',$refresh_token);
-		$this->refresh_token = $refresh_token;
+		header("Location: " . $this->oauth_url . '/auth/' . '?redirect=' . urlencode($redirect) . '&client_id=' . $this->client_id);
+		die();
 		
 	}
+
+	/* Get Access Token */
+	private function get_access_token(){
+		
+		if(empty($this->auth_code) || empty($this->client_id) || empty($this->client_secret)){
+			return false;
+		}
+		
+		$authURL = $this->oauth_url . '/token/' . '?code=' . $this->auth_code . '&client_id=' . $this->client_id . '&client_secret=' . $this->client_secret;
+		$this->set_access_token(file_get_contents($authURL));
+		
+	}
 	
+	/* Set Auth Code if was returned, call within CallBack and is in the URL params */
+	public function set_auth_code(){
+		
+		if(isset($_GET['code'])){
+			$this->set_auth_code($_GET['code']);
+		}
+	}
+	
+	/* Log Out */
+	function logout(){
+		myLISession::kill_all();
+	}
+	
+	/* Log In */
+	function login(){
+		
+		if($this->access_token_valid){
+			return true;
+		}elseif(isset($this->auth_code)
+			$this->get_access_token();
+			return true;
+		{
+			$this->get_auth_code();
+		}
+	}	
+		
 	/* Set the access token */
-	function set_access_token($access_token){
+	public function set_access_token($access_token){
 		
 		myLISession::save('access_token',$access_token);
 		$this->access_token = $access_token;
@@ -96,28 +158,9 @@ class myLI{
     
 	}
 			
-	/* Check the current refresh token is valid */
-	function refresh_token_valid(){
-    
-		if($this->refresh_token_validity == true){
-			return $this->refresh_token_validity;
-		}	
-	
-		if(isset($this->refresh_token) && $this->api->oAuth->isrefreshtokenvalid->query(array('refreshToken'=>$this->refresh_token))){
-            return true;
-		}else{
-			return false;
-		}
-		
-	}	
-
 	/* Check the current access token is valid */
 	function access_token_valid(){
 		
-		if($this->access_token_validity == true){
-			return $this->access_token_validity;
-		}
-
 		if(isset($this->access_token) && $this->api->oAuth->isaccesstokenvalid->query(array('accessToken'=>$this->access_token))){
 			return true;
 		}else{
@@ -125,49 +168,6 @@ class myLI{
 		}
 		
 	}	
-	
-	/* Get an Access Token */
-	function get_access_token(){
-		
-		if(empty($this->client_id) || empty($this->client_secret)){
-			return false;
-		}
-
-		if(!empty($this->access_token)){		
-			
-			if($this->access_token_valid()){
-				return $this->access_token;
-			}
-		}    
-
-        if(!empty($this->refresh_token) && $this->refresh_token_valid()){
-            
-            $this->access_token = $this->api->oAuth->generateappaccesstoken->query(array('clientID'=>$this->client_id,'clientSecret'=>$this->client_secret,'refreshToken'=>$this->refresh_token))->Token;
-            $this->set_access_token($this->access_token);
-            return $this->access_token;
-            
-        }else{
-
-            $this->get_refresh_token();
-        }
-    	
-	}
-	
-	/* Get refresh token */
-	function get_refresh_token(){
-		
-		if(empty($this->client_id) || empty($this->client_secret)){
-			return false;
-		}		
-                                
-		$origin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-
-        $destination = $this->oAuth_url . '?origin=' . urlencode($origin);
-            
-		header("Location: " . $destination);
-		die();
-		
-	}
 	
 	/* Pulls access token owners basic profile */
 	function get_user_profile(){

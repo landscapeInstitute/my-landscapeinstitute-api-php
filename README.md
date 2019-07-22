@@ -1,68 +1,88 @@
 
+
 # MyLI oAuth and API Class
 
 ## Introduction
 
-This library allows Apps using client ID's and Secret or the use of personal access tokens to access the MyLI API. This library is for users who are intergrating services to MyLI. All MyLI users can access their own data by use of personal access tokens. 
-Apps must be setup and approved by the Landscape Institute Directly. All API's are rate limited. 
+This library allows Apps using client ID's and Secret or the use of personal access tokens to access the MyLI API. This library is for users who are integrating services to MyLI. 
+- All MyLI users can access their own data by use of personal access tokens. 
+- Apps must be setup and approved by the Landscape Institute Directly. All API's are rate limited. 
 
 When a user connects using an APP, they will be asked to give expressed permission for your app to use the data it has requested. All app actions are logged. 
 
-## Setup
 
-`require('myLI.php');`
+### Scenario 1 
+#### I'm using a client ID and Secret and my own app
 
-## Scenario 1, Im using a client ID and Secret and my own app
+- App Access Token and oAuth Login
+- Assumes your registered callback URL is login.php
 
-For apps which have been issued a client ID and secret, these require the user to request a refresh token which your app can exchange for an access token. This is for basic usage, full documention on request. 
-
-### Initialise With a Client ID and Client Secret
-
+### login.php
+ 
+ 	require('my-landscapeinstitute-api.php.php');
+ 
     $myLI = new myLI(array(
     		'client_id'=>'APP_CLIENT_ID'
     		'client_secret'=>'APP_CLIENT_SECRET'
     		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL'
-    
     ));
-    
-    /* Send User to get a refresh token for our app*/
-    if(!$myLI->refresh_token_valid() ){
-    	$myLI->get_refresh_token();
-    }
-    
-    /* Refresh token valid but we do not have an access token */
-    if($myLI->refresh_token_valid() && !myLISession::exists('access_token')){
-    
-    	$myLI->get_access_token();
-        
-    }
-    
+	
+	$myLI->set_auth_code();
+	
+	/* Call Login, if the user is not logged in, they will be sent to MyLI to login and returned to your registered callback.php otherwise they goto profile.php */
+	if($myLI->login()){
+		header("Location: \profile.php");
+	}; 
+
+
+### profile.php
+
+	
+ 	require('my-landscapeinstitute-api.php.php');	
+	
+	$myLI = new myLI(array(
+    		'client_id'=>'APP_CLIENT_ID'
+    		'client_secret'=>'APP_CLIENT_SECRET'
+    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL'
+    ));	
+	
     /* Access token is valid */
-    if($myLI->access_token_valid()){
+    if($myLI->login()){
     
     	$user_profile = $myLI->get_user_profile();
     	$user_membership = $myLI->get_user_membership();
     
     }
+	
+	echo $user_profile->first_name;
+	echo $user_profile->last_name;
+	
 
+### Scenario 2, 
+#### I'm using a personal access token from my dashboard
+- You have generated a personal access token from your dashboard
+- You only need to access your own data. 
 
-## Scenario 2, Im using a personal access token 
+### profile.php
 
-Generated from dashboard, personal access tokens are tied to a single account
-
-### Initialise With a Personal Access Token
-
-    $myLI = new myLI(array(
-    		'access_token'=>'ACCESS_TOKEN',
-    		'instance_url'=>'https://my.landscapeinstitute.org'
-    ));
-    		
-    if($myLI->access_token_valid()){
+ 	require('my-landscapeinstitute-api.php.php');	
+	
+	$myLI = new myLI(array(
+    		'access_token'=>'PERSONAL_ACCESS_TOKEN'
+    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL'
+    ));	
+	
+    /* Access token is valid */
+    if($myLI->login()){
     
-    	$my_profile = $myLI->get_user_profile();
-    	$my_membership = $myLI->get_membership();
-    	
+    	$user_profile = $myLI->get_user_profile();
+    	$user_membership = $myLI->get_user_membership();
+    
     }
+	
+	echo $user_profile->first_name;
+	echo $user_profile->last_name;
+
 
 ## Session Variables
 
