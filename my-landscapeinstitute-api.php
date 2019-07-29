@@ -79,7 +79,7 @@ class myLI{
 		
 		/* Generate these from Instance URL */
  		$this->json_file = $this->instance_url . '/api/swagger.json';
-		$this->oauth_url = $this->instance_url . '/oauth'
+		$this->oauth_url = $this->instance_url . '/oauth';
 	
 		/* If access token is provided, then load the API, saves to session to keep loading times down */
 		if($this->access_token){
