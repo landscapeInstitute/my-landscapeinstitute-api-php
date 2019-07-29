@@ -7,150 +7,172 @@
 * @license    http://www.php.net/license/3_1.txt  PHP License 3.1
 */
 
-class myLIHelper{
-	
-	public static function current_url(){
-		return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";	
-	}
-	
-}
 
-class myLISession{
-	
-	public static function save($key,$v){
-		if(session_status() == PHP_SESSION_NONE) session_start();
-			$_SESSION['myli_' . $key] = $v; 
-	}
-	
-	public static function load($key){
-		if(self::exists($key))
-			return $_SESSION['myli_' . $key];
-	}
-	
-	public static function exists($key){
-		if(!empty($_SESSION['myli_' . $key])) return true;
-	}
-	
-	public static function kill_all(){
+function myLI($arr){
 
-		foreach($_SESSION as $key => $val){
-			
-			if(strpos($key,'myli_')  !== false){
-				unset($_SESSION[$key]);
-			}
-		}
-		
-		
-	}
-	
+	return myLI::instance($arr);
 }
 
 class myLI{
 	
-	public function __construct($arr){
+	public static $instance;
 
-		/*
+	public static function instance($arr) {
 		
-		@arr options:
-		access_token: If a token is already available, such as a personal access token
-		client_id: Provided client ID for your app, if not using a personal access token
-		client_secret: Provided client secret for your app, if not using a personal access token
-		instance_url: the full URL to the root of the MyLI Instance you are connecting to. 
-		
-		*/
+        if (self::$instance === null) {
+            self::$instance = new self($arr);
+        }
+
+        return self::$instance;
+    }
+	
+	public function __construct($arr){
 		
 		/* Pull Access Token from either ARR or session is available */
 		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));	
-		
-		/* Pull Auth Code from either ARR or session is available */		
-		$this->auth_code = (isset($arr['auth_code']) ? $arr['auth_code'] : myLISession::load('auth_code'));	
-		
-		/* Check Access Token is valid, log out if not */
-		if(!$this->access_token_valid($this->access_token)){
-			$this->logout();
-		}
-		
+
 		/* Instance are we accessing */
 		$this->instance_url = (isset($arr['instance_url']) ? rtrim($arr['instance_url'],"/") : null);
+		if(empty($this->instance_url)) return new myLIException('No Instance URL Provided');		
 		
-		/* Required for App Access Token Generation */
+		/* Client ID */
 		$this->client_id = (isset($arr['client_id']) ? $arr['client_id'] : null);
+		
+		/* Client Secret */
 		$this->client_secret = (isset($arr['client_secret']) ? $arr['client_secret'] : null);
 		
-		/* Generate these from Instance URL */
- 		$this->json_file = $this->instance_url . '/api/swagger.json';
-		$this->oauth_url = $this->instance_url . '/oauth';
-	
-		/* If access token is provided, then load the API, saves to session to keep loading times down */
-		if($this->access_token){
-			
-			if(myLISession::exists('api')){
-				$this->api = myLISession::load('api');
-			}else{
-				$this->api = new myLIAPI($this->json_file, $this->access_token, $this->debug);
-				myLISession::save('api',$api);
-			}
-			
-		}
+		/* Generate JSON URL from Instance URL */
+ 		$this->json_url = $this->instance_url . '/api/swagger.json';
 		
+		/* Generate oAuth URL from Instance URL */
+		$this->oauth_url = $this->instance_url . '/oauth';
+		
+		/* Sets any pending Auth Codes to this instance */
+		$this->set_auth_code();
+	
+		/* Instance of the API */
+		$this->api = new myLIAPI(array(
+			'access_token' => $this->access_token,
+			'debug' => $this->debug,
+			'json_url' => $this->json_url,
+		));	
+				
 	}
 	
-	/* Send to get Auth Code, Optional Redirect which is returned to your call back set when app was registered */
-	private function get_auth_code($redirect=null){
-		
-		if(empty($redirect)){
-			$redirect = myLIHelper::current_url();
-		}
+	/* Send to get AuthCode, the current URL is to your call back URL, set when app was registered */
+	private function get_auth_code(){
 		
 		if(empty($this->client_id)){
-			return false;
+			return new myLIException("No Client ID provided");
 		}
+		
+		$redirect = myLIHelper::current_url();
 		
 		header("Location: " . $this->oauth_url . '/auth/' . '?redirect=' . urlencode($redirect) . '&client_id=' . $this->client_id);
 		die();
 		
 	}
 
-	/* Get Access Token */
-	private function get_access_token(){
+	/* Is the users access token set and valid? */
+	function has_access_token(){
 		
-		if(empty($this->auth_code) || empty($this->client_id) || empty($this->client_secret)){
+		if(!isset($this->access_token) || !$this->access_token_valid($this->access_token)){
 			return false;
+		}else{
+			return true;
 		}
 		
-		$authURL = $this->oauth_url . '/token/' . '?code=' . $this->auth_code . '&client_id=' . $this->client_id . '&client_secret=' . $this->client_secret;
-		$this->set_access_token(file_get_contents($authURL));
+	}
+
+	/* Get Access Token */
+	function get_access_token(){
+		
+		if(empty($this->auth_code)){
+			$this->get_auth_code();
+		}
+		
+		if(empty($this->client_id) || empty($this->client_secret)){
+			return new myLIException("No Client ID or Client Secret provided");
+		}
+		
+		$params = array(		
+			'client_id' => urlencode($this->client_id),
+			'client_secret' => urlencode($this->client_secret),
+			'code' => urlencode($this->auth_code),
+		);
+		
+		$authURL = $this->oauth_url . '/token?' . http_build_query($params);
+		
+		$ch = curl_init();
+ 
+		if ($ch === false) {
+			return new myLIException("Unable to initialise CURL");
+		}
+		
+		$authURL = urlencode($authURL);
+		$authURL = urldecode($authURL);
+
+		curl_setopt($ch, CURLOPT_URL, $authURL);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,false);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER,false);
+		
+		$content = curl_exec($ch);
+
+		if ($content === false) {
+			return new myLIException("No response from $authURL");
+		}
+
+		curl_close($ch);
+		
+		$token = json_decode($content);
+		
+		if(empty($token)){
+			return new myLIException("No token was returned from $authURL");
+		}
+		
+		$this->set_access_token($token->Token);
+		
+		return $this->access_token;
 		
 	}
 	
 	/* Set Auth Code if was returned, call within CallBack and is in the URL params */
-	public function set_auth_code(){
+	private function set_auth_code(){
 		
 		if(isset($_GET['code'])){
-			$this->set_auth_code($_GET['code']);
+			$this->auth_code = ($_GET['code']);
 		}
 	}
 	
-	/* Log Out */
-	function logout(){
-		myLISession::kill_all();
+	/* The Origin / Redirect passed back when fetching an Auth Code */
+	public function get_origin(){
+		if(isset($_GET['redirect'])) return urldecode($_GET['redirect']);
+		if(isset($_GET['origin'])) return urldecode($_GET['origin']);	
+		return false;
 	}
 	
-	/* Log In */
-	function login(){
+	/* Log Out - Removes any stored sessions variables - Uses SELF URL if no redirect given */
+	function logout($redirect){
 		
-		if($this->access_token_valid){
-			return true;
-		}elseif(isset($this->auth_code)
-			$this->get_access_token();
-			return true;
-		{
-			$this->get_auth_code();
-		}
+		$redirect = empty($redirect) ? myLIHelper::current_url() : $redirect;
+		$logout = $this->api->app->getlogouturl->query(array('redirect'=>$redirect ));
+		myLISession::kill_all();
+		
+		header("Location: " . $logout);
+		die();	
+		
+	}
+	
+	/* Log In - Alias for get Access Token */
+	function login(){
+			
+		$this->get_access_token();
 	}	
+	
 		
 	/* Set the access token */
-	public function set_access_token($access_token){
+	private function set_access_token($access_token){
 		
 		myLISession::save('access_token',$access_token);
 		$this->access_token = $access_token;
@@ -159,7 +181,7 @@ class myLI{
 	}
 			
 	/* Check the current access token is valid */
-	function access_token_valid(){
+	private function access_token_valid(){
 		
 		if(isset($this->access_token) && $this->api->oAuth->isaccesstokenvalid->query(array('accessToken'=>$this->access_token))){
 			return true;
@@ -173,7 +195,7 @@ class myLI{
 	function get_user_profile(){
 
 		if(!myLISession::exists('user_profile')){
-			$this->user_profile = $this->api->me->userprofile->query();
+			$this->user_profile = $this->api->me->userprofile->query();		
             myLISession::save('user_profile',$this->user_profile );
 		}
 		$this->user_profile = myLISession::load('user_profile');
@@ -233,14 +255,61 @@ class myLI{
 	}
 }
 
+class myLIHelper{
+	
+	public static function current_url(){
+		return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";	
+	}
+	
+}
+
+class myLISession{
+	
+	public static function save($key,$v){
+		if(session_status() == PHP_SESSION_NONE) session_start();
+			$_SESSION['myli_' . $key] = $v; 
+	}
+	
+	public static function load($key){
+		if(session_status() == PHP_SESSION_NONE) session_start();
+		if(self::exists($key))
+			return $_SESSION['myli_' . $key];
+	}
+	
+	public static function exists($key){
+		if(!empty($_SESSION['myli_' . $key])) return true;
+	}
+	
+	public static function kill_all(){
+
+		foreach($_SESSION as $key => $val){
+			
+			if(strpos($key,'myli_')  !== false){
+				unset($_SESSION[$key]);
+			}
+		}
+		
+		
+	}
+	
+}
+
 class myLIAPI {
 	
-	public function __construct($json_file,$access_token=null,$debug=false){
+	/* Returns an Instance of the MyLI API or if failed, returns false */
+	public function __construct($arr){
+		
+		if(!empty($arr['json_url']))$this->json_url = $arr['json_url'];
+		if(!empty($arr['access_token']))$this->access_token = $arr['access_token'];
+		if(!empty($arr['debug']))$this->debug = $arr['debug'];
 
-		$this->json_file = $json_file;
-		$this->access_token = $access_token;
-		$this->debug = $debug;
-		$this->get_api_resources();
+		if(empty($this->json_url)){
+			return false;
+		}
+		
+		if(!$this->get_api_resources()){
+			return false;
+		};
 	
 	}
     
@@ -291,30 +360,41 @@ class myLIAPI {
     }
 
 	public function get_api_resources(){
-	
+		
+		
+			/* Store JSON returned from Definition file in session for later use */
 			if(!myLISession::exists('json')){
-	
-				$json = file_get_contents($this->json_file);
+				
+				$this->json_url = str_replace('local','staging',$this->json_url);
+				
+				$ch = curl_init();
+				curl_setopt($ch, CURLOPT_URL, $this->json_url);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER , true);
+				
+				$json = curl_exec($ch);
+
+				curl_close($ch);
+				
+				$obj = json_decode($json);
+				
+				if(!property_exists($obj,'openapi'))
+					return false;				
+				
 				myLISession::save('json',$json);
 			}
 			
-			$obj = json_decode(myLISession::load('json'));
-					
-			if(!property_exists($obj,'openapi'))
-				return false;
 			
+			$obj = json_decode(myLISession::load('json'));
+
 			$paths = $obj->paths;
 			
 			foreach($paths as $path => $pathObj){
-				
 				$baseName = strtolower(explode("/",$path)[2]);
 				$methodName = strtolower(explode("/",$path)[3]);
-
 				$this->addBase($methodName, $baseName, $path, $pathObj);
-				
 			}	
+			
 				
-	
 	}
     
     public function addBase($methodName,$baseName,$path,$pathObj){
@@ -362,7 +442,7 @@ class myLIAPI {
         $this_method->methodName = $methodName;
         $this_method->method = $methodType;
         $this->$baseName->$methodName = $this_method;    
-        $baseURL = parse_url($this->json_file);	
+        $baseURL = parse_url($this->json_url);	
         $this->$baseName->$methodName->default_url = $baseURL['scheme'] . '://' . $baseURL['host'] . $path;   
         $this->hasResources = true;
         
@@ -637,5 +717,16 @@ class myLIAPIParam{
 class myLIAPIBase {
 	
 }
+
+class myLIException{
+	
+	function __construct($error="undefined",$code=2){
+		
+		$this->code = $code;
+		$this->error = $error;
+	}
+	
+}
+
 
 ?>
