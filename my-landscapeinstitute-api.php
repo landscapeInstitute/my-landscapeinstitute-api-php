@@ -18,23 +18,23 @@ class myLI{
 	
 	public static $instance;
 
-	public static function instance($arr) {
+	public static function instance( $arr ) {
 		
         if (self::$instance === null) {
-            self::$instance = new self($arr);
+            self::$instance = new self( $arr );
         }
 
         return self::$instance;
     }
 	
 	/* If Extending the MyLI Class this info can come from a database for example */
-	public function __construct($arr){
+	public function __construct( $arr ){
 		
-		$this->init($arr);
+		$this->init(  $arr);
 			
 	}
 	
-	public function init($arr){
+	public function init( $arr ){
 		
 		/* Pull Access Token from either ARR or session is available */
 		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));	
@@ -302,10 +302,7 @@ class myLISession{
 				unset($_SESSION[$key]);
 			}
 		}
-		
-		
 	}
-	
 }
 
 class myLIAPI {
