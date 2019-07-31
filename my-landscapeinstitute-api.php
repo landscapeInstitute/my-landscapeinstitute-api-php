@@ -5,6 +5,7 @@
 * @author     Louis Varley <louisvarley@googlemail.com>
 * @copyright  2019 Landscape Institute
 * @license    http://www.php.net/license/3_1.txt  PHP License 3.1
+* @version	  2.3
 */
 
 
@@ -26,7 +27,14 @@ class myLI{
         return self::$instance;
     }
 	
+	/* If Extending the MyLI Class this info can come from a database for example */
 	public function __construct($arr){
+		
+		$this->init($arr);
+			
+	}
+	
+	public function init($arr){
 		
 		/* Pull Access Token from either ARR or session is available */
 		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));	
@@ -56,17 +64,19 @@ class myLI{
 			'debug' => $this->debug,
 			'json_url' => $this->json_url,
 		));	
-				
+		
 	}
 	
 	/* Send to get AuthCode, the current URL is to your call back URL, set when app was registered */
-	private function get_auth_code(){
+	private function get_auth_code($redirect=null){
 		
 		if(empty($this->client_id)){
 			return new myLIException("No Client ID provided");
 		}
 		
-		$redirect = myLIHelper::current_url();
+		if(empty($redirect)){
+			$redirect = myLIHelper::current_url();
+		}
 		
 		header("Location: " . $this->oauth_url . '/auth/' . '?redirect=' . urlencode($redirect) . '&client_id=' . $this->client_id);
 		die();
@@ -165,7 +175,11 @@ class myLI{
 	}
 	
 	/* Log In - Alias for get Access Token */
-	function login(){
+	function login($redirect=null){
+			
+		if(empty($this->auth_code)){
+			$this->get_auth_code($redirect);
+		}	
 			
 		$this->get_access_token();
 	}	
