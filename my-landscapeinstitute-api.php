@@ -5,36 +5,19 @@
 * @author     Louis Varley <louisvarley@googlemail.com>
 * @copyright  2019 Landscape Institute
 * @license    http://www.php.net/license/3_1.txt  PHP License 3.1
-* @version	  2.3
+* @version	  2.4
 */
 
-
-function myLI($arr){
-
-	return myLI::instance($arr);
-}
-
 class myLI{
-	
-	public static $instance;
-
-	public static function instance( $arr ) {
-		
-        if (self::$instance === null) {
-            self::$instance = new self( $arr );
-        }
-
-        return self::$instance;
-    }
 	
 	/* If Extending the MyLI Class this info can come from a database for example */
 	public function __construct( $arr ){
 		
-		$this->init(  $arr);
+		$this->setup( $arr );
 			
 	}
 	
-	public function init( $arr ){
+	public function setup( $arr ){
 		
 		/* Pull Access Token from either ARR or session is available */
 		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));	
@@ -84,7 +67,7 @@ class myLI{
 	}
 
 	/* Is the users access token set and valid? */
-	function has_access_token(){
+	public function has_access_token(){
 		
 		if(!isset($this->access_token) || !$this->access_token_valid($this->access_token)){
 			return false;
@@ -95,7 +78,7 @@ class myLI{
 	}
 
 	/* Get Access Token */
-	function get_access_token(){
+	public function get_access_token(){
 		
 		if(empty($this->auth_code)){
 			$this->get_auth_code();
@@ -163,7 +146,7 @@ class myLI{
 	}
 	
 	/* Log Out - Removes any stored sessions variables - Uses SELF URL if no redirect given */
-	function logout($redirect){
+	function logout( $redirect=null ){
 		
 		$redirect = empty($redirect) ? myLIHelper::current_url() : $redirect;
 		$logout = $this->api->app->getlogouturl->query(array('redirect'=>$redirect ));
@@ -175,7 +158,7 @@ class myLI{
 	}
 	
 	/* Log In - Alias for get Access Token */
-	function login($redirect=null){
+	function login( $redirect=null ){
 			
 		if(empty($this->auth_code)){
 			$this->get_auth_code($redirect);
@@ -184,7 +167,6 @@ class myLI{
 		$this->get_access_token();
 	}	
 	
-		
 	/* Set the access token */
 	private function set_access_token($access_token){
 		
@@ -254,7 +236,6 @@ class myLI{
 		return $this->user_membership;
 		
 	}	
-
 
 	/* Call Any Other Endpoint */
 	function call($endpoint,$method,$args){
