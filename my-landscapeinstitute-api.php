@@ -5,7 +5,7 @@
 * @author     Louis Varley <louisvarley@googlemail.com>
 * @copyright  2019 Landscape Institute
 * @license    http://www.php.net/license/3_1.txt  PHP License 3.1
-* @version	  2.4
+* @version	  2.5
 */
 
 class myLI{
@@ -40,6 +40,9 @@ class myLI{
 		
 		/* Sets any pending Auth Codes to this instance */
 		$this->set_auth_code();
+		
+		/* Is Debug Enabled */
+		$this->debug = (isset($arr['debug']) ? $arr['debug'] : false);
 	
 		/* Instance of the API */
 		$this->api = new myLIAPI(array(
