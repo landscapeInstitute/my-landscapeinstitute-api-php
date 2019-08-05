@@ -138,4 +138,6 @@ For example
 	    }
     }
 
- 
+## Git Hooks
+
+If making changes to the main branch be sure to use the included hooks to auto increment the version 

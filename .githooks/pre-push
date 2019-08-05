@@ -43,6 +43,6 @@ version=`increment_version $version`
 nVersion="Version: $version"
 
 sed -i "5s/.*/$nVersion/" my-landscapeinstitute-api.php
-git add functions.php
+git add my-landscapeinstitute-api.php
 git commit -m "$version" -m "";
 
