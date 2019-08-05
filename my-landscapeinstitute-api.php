@@ -1,11 +1,10 @@
 <?php
-/**
-* MyLI API and oAuth Class
-*
-* @author     Louis Varley <louisvarley@googlemail.com>
-* @copyright  2019 Landscape Institute
-* @license    http://www.php.net/license/3_1.txt  PHP License 3.1
-* @version	  2.6
+
+/*
+Name: MyLI PHP API Class
+Version: 2.7
+Author: Louis Varley
+Author URI: http://www.landscapeinstitute.org
 */
 
 class myLI{
