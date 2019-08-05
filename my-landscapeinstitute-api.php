@@ -5,7 +5,7 @@
 * @author     Louis Varley <louisvarley@googlemail.com>
 * @copyright  2019 Landscape Institute
 * @license    http://www.php.net/license/3_1.txt  PHP License 3.1
-* @version	  2.5
+* @version	  2.6
 */
 
 class myLI{
@@ -333,7 +333,7 @@ class myLIAPI {
  
     }    
 
-    public function __set(string $var, $value) {
+    public function __set($var, $value) {
         
         if (property_exists($this, $var)) {
             $this->$var = $value;
