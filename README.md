@@ -1,5 +1,6 @@
 
 
+
 ## MyLI oAuth and API Class
 
 ### Introduction
@@ -29,17 +30,22 @@ You must initialise the class with given options as part of the construction of 
 - Assumes your registered callback URL is login.php
 
 ### login.php
- 
+
+	if (session_status() == PHP_SESSION_NONE) {
+		session_start();
+	}	 
+
  	require('my-landscapeinstitute-api.php.php');
  
     $myLI = new myLI(array(
     		'client_id'=>'APP_CLIENT_ID'
     		'client_secret'=>'APP_CLIENT_SECRET'
-    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL'
+    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL',
+    		'access_token' => (isset($_SESSION['access_token']) ? $_SESSION['access_token'] : null),
     ));
 	
 	if(!$myLI->has_access_token()){
-		$myLI->get_access_token();
+		$_SESSION['access_token'] = $myLI->get_access_token();
 	}else{
 		header("Location: \profile.php");
 	}
@@ -49,14 +55,19 @@ You must initialise the class with given options as part of the construction of 
 
 	
  	require('my-landscapeinstitute-api.php.php');	
-	
-	$myLI = new myLI(array(
+		
+	if (session_status() == PHP_SESSION_NONE) {
+			session_start();
+		}	 
+
+ 	require('my-landscapeinstitute-api.php.php');
+ 
+    $myLI = new myLI(array(
     		'client_id'=>'APP_CLIENT_ID'
     		'client_secret'=>'APP_CLIENT_SECRET'
-    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL'
-    ));	
-	
-	$myLI->get_access_token();
+    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL',
+    		'access_token' => (isset($_SESSION['access_token']) ? $_SESSION['access_token'] : null),
+    ));
 	
     /* Access token is valid */
     if($myLI->has_access_token()){
@@ -79,12 +90,18 @@ You must initialise the class with given options as part of the construction of 
 
 ### profile.php
 
- 	require('my-landscapeinstitute-api.php.php');	
-	
-	$myLI = new myLI(array(
-    		'access_token'=>'PERSONAL_ACCESS_TOKEN'
-    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL'
-    ));	
+	if (session_status() == PHP_SESSION_NONE) {
+				session_start();
+			}	 
+
+ 	require('my-landscapeinstitute-api.php.php');
+ 
+    $myLI = new myLI(array(
+    		'client_id'=>'APP_CLIENT_ID'
+    		'client_secret'=>'APP_CLIENT_SECRET'
+    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL',
+    		'access_token' => (isset($_SESSION['access_token']) ? $_SESSION['access_token'] : null),
+    ));
 	
     /* Access token is valid */
     if($myLI->has_access_token()){
@@ -100,10 +117,30 @@ You must initialise the class with given options as part of the construction of 
 
 ## Session Variables
 
-This class saves it's variables to session. This means that access tokens or auth tokens which have been set persist across sessions without the need 
-to save them to a database or to the session yourself. 
+This Library does not save anything to session. The app should handle saving the access token to session and adding back into the library on following page loads. 
+The simplest way to do this is to save the response from get_access_token to session.
 
-Multiple instances of this class is not recommended and should not be needed. 
+For example
+
+`
+
+if (session_status() == PHP_SESSION_NONE) {
+		session_start();
+	}	
+	
+	$myLI = new myLI(array(
+    		'client_id'=>'APP_CLIENT_ID'
+    		'client_secret'=>'APP_CLIENT_SECRET'
+    		'instance_url'=>'SANDBOX_OR_LIVE_INSTANCE_URL',
+			'access_token' => (isset($_SESSION['access_token']) ? $_SESSION['access_token'] : null),
+    ));	
+	
+	$_SESSION['access_token'] = $myLI->get_access_token();
+`
+ 
+ You could instead save access token to a database and retreve. 
+
+If you do not handle sessions then your access token is lost on next page load and will need to be called again.  The means the access token is retreved from the API server on every load and will result in a performance decrease on your site. 
  
 
 ## Raw API Actions
@@ -137,6 +174,8 @@ For example
 
 	    }
     }
+
+Extending allows you to do things such as automatically saving your access token by creating your own "set_access_token" function
 
 ## Git Hooks
 
