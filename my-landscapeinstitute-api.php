@@ -10,20 +10,20 @@ Author URI: http://www.landscapeinstitute.org
 class myLI{
 	
 	/* If Extending the MyLI Class this info can come from a database for example */
-	public function __construct( $arr ){
-		
-		$this->setup( $arr );
-			
+	public function __construct( $arr ){		
+		$this->setup( $arr );			
 	}
 	
 	public function setup( $arr ){
 		
-		/* Pull Access Token from either ARR or session is available */
-		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : myLISession::load('access_token'));	
+		/* Access Token if provided */
+		$this->access_token = (isset($arr['access_token']) ? $arr['access_token'] : null);	
 
 		/* Instance are we accessing */
 		$this->instance_url = (isset($arr['instance_url']) ? rtrim($arr['instance_url'],"/") : null);
-		if(empty($this->instance_url)) return new myLIException('No Instance URL Provided');		
+		
+		/* No Instance Provided */
+		if(empty($this->instance_url)) die('No Instance URL Provided');		
 		
 		/* Client ID */
 		$this->client_id = (isset($arr['client_id']) ? $arr['client_id'] : null);
@@ -52,7 +52,7 @@ class myLI{
 		
 	}
 	
-	/* Send to get AuthCode, the current URL is to your call back URL, set when app was registered */
+	/* Get Authcode and return to callback URL */
 	private function get_auth_code($redirect=null){
 		
 		if(empty($this->client_id)){
@@ -142,6 +142,7 @@ class myLI{
 	
 	/* The Origin / Redirect passed back when fetching an Auth Code */
 	public function get_origin(){
+		
 		if(isset($_GET['redirect'])) return urldecode($_GET['redirect']);
 		if(isset($_GET['origin'])) return urldecode($_GET['origin']);	
 		return false;
@@ -152,8 +153,6 @@ class myLI{
 		
 		$redirect = empty($redirect) ? myLIHelper::current_url() : $redirect;
 		$logout = $this->api->app->getlogouturl->query(array('redirect'=>$redirect ));
-		myLISession::kill_all();
-		
 		header("Location: " . $logout);
 		die();	
 		
@@ -170,9 +169,9 @@ class myLI{
 	}	
 	
 	/* Set the access token */
-	private function set_access_token($access_token){
-		
-		myLISession::save('access_token',$access_token);
+	function set_access_token($access_token){
+		echo 'old set access token';
+		die();
 		$this->access_token = $access_token;
 		$this->api->access_token = $access_token;
     
@@ -191,51 +190,29 @@ class myLI{
 	
 	/* Pulls access token owners basic profile */
 	function get_user_profile(){
-
-		if(!myLISession::exists('user_profile')){
-			$this->user_profile = $this->api->me->userprofile->query();		
-            myLISession::save('user_profile',$this->user_profile );
-		}
-		$this->user_profile = myLISession::load('user_profile');
-		return $this->user_profile;
+		
+		return $this->api->me->userprofile->query();
 		
 	}
  
 	/* Pulls access token owners account basic profile */ 
     function get_account_profile(){
-        
-        if(!myLISession::exists('account_profile')){
-			$this->account_profile = $this->api->me->accountprofile->query();
-            myLISession::save('account_profile',$this->accountprofile );
-		}
-		$this->account_profile = myLISession::load('account_profile');
-		return $this->account_profile;
+
+		return $this->api->me->accountprofile->query();        
         
     }
  
 	/* Pulls access token owners current account membership details */ 
     function get_account_membership(){
 
-		if(!myLISession::exists('account_membership')){
-			$this->account_membership = $this->api->me->accountmembership->query();
-			myLISession::save('account_membership',$this->account_membership );
-		}
-	
-		$this->account_membership = myLISession::load('account_membership');
-		return $this->account_membership;
+		return $this->api->me->accountmembership->query();
 		
 	}	
 	
 	/* Pulls access token owners current membership details */
 	function get_user_membership(){
 
-		if(!myLISession::exists('user_membership')){
-			$this->user_membership = $this->api->me->usermembership->query();
-			myLISession::save('user_membership',$this->user_membership );
-		}
-	
-		$this->user_membership = myLISession::load('user_membership');
-		return $this->user_membership;
+		return $this->api->me->usermembership->query();
 		
 	}	
 
@@ -260,33 +237,6 @@ class myLIHelper{
 	
 }
 
-class myLISession{
-	
-	public static function save($key,$v){
-		if(session_status() == PHP_SESSION_NONE) session_start();
-			$_SESSION['myli_' . $key] = $v; 
-	}
-	
-	public static function load($key){
-		if(session_status() == PHP_SESSION_NONE) session_start();
-		if(self::exists($key))
-			return $_SESSION['myli_' . $key];
-	}
-	
-	public static function exists($key){
-		if(!empty($_SESSION['myli_' . $key])) return true;
-	}
-	
-	public static function kill_all(){
-
-		foreach($_SESSION as $key => $val){
-			
-			if(strpos($key,'myli_')  !== false){
-				unset($_SESSION[$key]);
-			}
-		}
-	}
-}
 
 class myLIAPI {
 	
@@ -355,38 +305,25 @@ class myLIAPI {
 
 	public function get_api_resources(){
 		
+		$this->json_url = str_replace('local','staging',$this->json_url);
 		
-			/* Store JSON returned from Definition file in session for later use */
-			if(!myLISession::exists('json')){
-				
-				$this->json_url = str_replace('local','staging',$this->json_url);
-				
-				$ch = curl_init();
-				curl_setopt($ch, CURLOPT_URL, $this->json_url);
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER , true);
-				
-				$json = curl_exec($ch);
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $this->json_url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER , true);
+		
+		$json = curl_exec($ch);
 
-				curl_close($ch);
-				
-				$obj = json_decode($json);
-				
-				if(!property_exists($obj,'openapi'))
-					return false;				
-				
-				myLISession::save('json',$json);
-			}
-			
-			
-			$obj = json_decode(myLISession::load('json'));
-
-			$paths = $obj->paths;
-			
-			foreach($paths as $path => $pathObj){
-				$baseName = strtolower(explode("/",$path)[2]);
-				$methodName = strtolower(explode("/",$path)[3]);
-				$this->addBase($methodName, $baseName, $path, $pathObj);
-			}	
+		curl_close($ch);
+		
+		$obj = json_decode($json);
+		
+		$paths = $obj->paths;
+		
+		foreach($paths as $path => $pathObj){
+			$baseName = strtolower(explode("/",$path)[2]);
+			$methodName = strtolower(explode("/",$path)[3]);
+			$this->addBase($methodName, $baseName, $path, $pathObj);
+		}	
 			
 				
 	}
