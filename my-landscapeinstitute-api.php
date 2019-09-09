@@ -2,7 +2,7 @@
 
 /*
 Name: MyLI PHP API Class
-Version: 3.0
+Version: 3.1
 Author: Louis Varley
 Author URI: http://www.landscapeinstitute.org
 */
