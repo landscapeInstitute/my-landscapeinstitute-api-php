@@ -148,7 +148,7 @@ class myLI{
 		return false;
 	}
 	
-	/* Log Out - Removes any stored sessions variables - Uses SELF URL if no redirect given */
+	/* Log Out */
 	function logout( $redirect=null ){
 		
 		$redirect = empty($redirect) ? myLIHelper::current_url() : $redirect;
@@ -170,8 +170,7 @@ class myLI{
 	
 	/* Set the access token */
 	function set_access_token($access_token){
-		echo 'old set access token';
-		die();
+
 		$this->access_token = $access_token;
 		$this->api->access_token = $access_token;
     
